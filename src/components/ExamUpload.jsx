@@ -94,20 +94,40 @@ export default function ExamUpload({ user, onUploaded }) {
         questionCount: questions.length,
       })
 
-      const batch = writeBatch(db)
+  const batch = writeBatch(db)
 
-      questions.forEach((q, index) => {
-        const questionRef = doc(collection(db, 'questions'))
+questions.forEach((q, index) => {
+  const privateRef = doc(collection(db, 'questionsPrivate'))
+  const publicRef = doc(collection(db, 'questionsPublic'))
 
-        batch.set(questionRef, {
-          ...q,
-          examId: examRef.id,
-          order: index + 1,
-          createdAt: serverTimestamp(),
-        })
-      })
+  const baseData = {
+    examId: examRef.id,
+    order: index + 1,
+    question: q.question,
+    questionType: q.questionType,
+    A: q.A || '',
+    B: q.B || '',
+    C: q.C || '',
+    D: q.D || '',
+    section: q.section || 'Phần I',
+    topic: q.topic || 'Chưa phân loại',
+    point: q.point || 1,
+    createdAt: serverTimestamp(),
+  }
 
-      await batch.commit()
+  batch.set(privateRef, {
+    ...baseData,
+    correct: q.correct,
+    correctList: q.correctList || [],
+    explanation: q.explanation || '',
+    partialMode: q.partialMode || 'none',
+    partialScoreMap: q.partialScoreMap || {},
+  })
+
+  batch.set(publicRef, baseData)
+})
+
+await batch.commit()
 
       await updateDoc(examRef, {
         questionCount: questions.length,

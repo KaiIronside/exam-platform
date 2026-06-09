@@ -1,14 +1,8 @@
 // src/firebase.js
-// ─────────────────────────────────────────────────────────────────
-// SECURITY NOTE (MVP):
-// - Đây là cấu hình Firebase client-side. API key này được thiết kế
-//   để public, nhưng bạn PHẢI cấu hình Firestore Security Rules
-//   để bảo vệ dữ liệu.
-// - Xem file firestore.rules trong repo để biết thêm chi tiết.
-// ─────────────────────────────────────────────────────────────────
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
+import { getFunctions } from 'firebase/functions'
 
 const firebaseConfig = {
   apiKey: "AIzaSyArhalMHmTGJijCbsCzGATRGopaGgGIP-A",
@@ -20,6 +14,9 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+
 export const db = getFirestore(app)
 export const auth = getAuth(app)
+export const functions = getFunctions(app, 'asia-southeast1')
+
 export default app

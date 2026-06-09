@@ -1,16 +1,14 @@
 // src/components/ExamPage.jsx
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  addDoc,
   collection,
   getDocs,
   orderBy,
   query,
-  serverTimestamp,
   where,
 } from 'firebase/firestore'
-import { db } from '../firebase'
-import { gradeExam } from '../utils/grading'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../firebase'
 
 const OPTION_KEYS = ['A', 'B', 'C', 'D']
 
@@ -39,6 +37,9 @@ function normalizeType(value) {
 
 function normalizeMultiAnswer(value) {
   return Array.isArray(value) ? value : []
+}
+function getAnswerKey(q) {
+  return String(q.order || q.id)
 }
 
 export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
@@ -71,13 +72,16 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
 
         try {
           const q = query(
-            collection(db, 'questions'),
+            collection(db, 'questionsPublic'),
             where('examId', '==', exam.id),
             orderBy('order', 'asc')
           )
           snap = await getDocs(q)
         } catch {
-          const q = query(collection(db, 'questions'), where('examId', '==', exam.id))
+          const q = query(
+            collection(db, 'questionsPublic'),
+            where('examId', '==', exam.id)
+          )
           snap = await getDocs(q)
         }
 
@@ -121,6 +125,47 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
   useEffect(() => {
     localStorage.setItem('exam_violations', String(violations))
   }, [violations])
+
+  async function handleSubmit(auto = false) {
+    if (submittedRef.current || submitting || questions.length === 0) return
+
+    if (!auto) {
+      const ok = window.confirm('Bạn chắc chắn muốn nộp bài?')
+      if (!ok) return
+    }
+
+    submittedRef.current = true
+    setSubmitting(true)
+
+    try {
+      const durationUsedSeconds = Math.floor((Date.now() - startedAtRef.current) / 1000)
+
+      const submitExam = httpsCallable(functions, 'submitExam')
+
+      const res = await submitExam({
+        examId: exam.id,
+        studentInfo,
+        answers,
+        violations,
+        durationUsedSeconds,
+      })
+
+      localStorage.removeItem('exam_answers')
+      localStorage.removeItem('exam_violations')
+      localStorage.removeItem(`question_order_${exam.id}`)
+
+      onSubmit({
+        ...res.data,
+        exam,
+        studentInfo,
+      })
+    } catch (err) {
+      console.error(err)
+      alert('Nộp bài thất bại: ' + (err.message || 'Không rõ lỗi'))
+      submittedRef.current = false
+      setSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     if (loading || submittedRef.current) return
@@ -166,7 +211,7 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
       window.removeEventListener('blur', addViolation)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [questions, answers])
+  }, [questions, answers, submitting])
 
   const currentQuestion = questions[currentIndex]
 
@@ -212,61 +257,9 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
     }))
   }
 
-  async function handleSubmit(auto = false) {
-    if (submittedRef.current || submitting || questions.length === 0) return
-
-    if (!auto) {
-      const ok = window.confirm('Bạn chắc chắn muốn nộp bài?')
-      if (!ok) return
-    }
-
-    submittedRef.current = true
-    setSubmitting(true)
-
-    try {
-      const grade = gradeExam(questions, answers)
-      const durationUsedSeconds = Math.floor((Date.now() - startedAtRef.current) / 1000)
-
-      const submissionData = {
-        examId: exam.id,
-        examTitle: exam.title,
-        studentName: studentInfo.studentName,
-        className: studentInfo.className,
-        studentCode: studentInfo.studentCode || '',
-        answers,
-        score: grade.score,
-        totalScore: grade.totalScore,
-        displayScore: grade.displayScore,
-        correctCount: grade.correctCount,
-        wrongCount: grade.wrongCount,
-        blankCount: grade.blankCount,
-        violations,
-        topicStats: grade.topicStats,
-        sectionStats: grade.sectionStats,
-        submittedAt: serverTimestamp(),
-        durationUsedSeconds,
-      }
-
-      const ref = await addDoc(collection(db, 'submissions'), submissionData)
-
-      onSubmit({
-        id: ref.id,
-        exam,
-        studentInfo,
-        violations,
-        durationUsedSeconds,
-        ...grade,
-      })
-    } catch (err) {
-      console.error(err)
-      alert('Nộp bài thất bại: ' + err.message)
-      submittedRef.current = false
-      setSubmitting(false)
-    }
-  }
-
-  function renderAnswerArea(q) {
-    const type = normalizeType(q.questionType)
+function renderAnswerArea(q) {
+  const type = normalizeType(q.questionType)
+  const answerKey = getAnswerKey(q)
 
     if (type === 'numeric') {
       return (
@@ -274,8 +267,8 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
           <label className="form-label">Nhập đáp án, tối đa 4 ký tự</label>
           <input
             className="form-input"
-            value={answers[q.id] || ''}
-            onChange={e => setNumericAnswer(q.id, e.target.value)}
+            value={answers[answerKey] || ''}
+            onChange={e => setNumericAnswer(answerKey, e.target.value)}
             placeholder="Ví dụ: 25"
             inputMode="decimal"
             maxLength={4}
@@ -290,8 +283,8 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
         <div className="flex flex-col gap-12">
           <button
             type="button"
-            className={`answer-option ${answers[q.id] === 'true' ? 'selected' : ''}`}
-            onClick={() => chooseSingle(q.id, 'true')}
+            className={`answer-option ${answers[answerKey] === 'true' ? 'selected' : ''}`}
+            onClick={() => chooseSingle(answerKey, 'true')}
           >
             <span className="answer-key">Đ</span>
             <span>Đúng</span>
@@ -299,8 +292,8 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
 
           <button
             type="button"
-            className={`answer-option ${answers[q.id] === 'false' ? 'selected' : ''}`}
-            onClick={() => chooseSingle(q.id, 'false')}
+            className={`answer-option ${answers[answerKey] === 'false' ? 'selected' : ''}`}
+            onClick={() => chooseSingle(answerKey, 'false')}
           >
             <span className="answer-key">S</span>
             <span>Sai</span>
@@ -310,12 +303,12 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
     }
 
     if (type === 'multi') {
-      const selected = normalizeMultiAnswer(answers[q.id])
+      const selected = normalizeMultiAnswer(answers[answerKey])
 
       return (
         <div>
           <div className="alert alert-info mb-16">
-            Chọn tất cả ý đúng. Câu này có chấm điểm từng phần theo số ý làm đúng.
+            Chọn tất cả ý đúng. Câu này có thể được chấm điểm từng phần theo cấu hình của giáo viên.
           </div>
 
           <div className="flex flex-col gap-12">
@@ -324,7 +317,7 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
                 key={key}
                 type="button"
                 className={`answer-option ${selected.includes(key) ? 'selected' : ''}`}
-                onClick={() => toggleMulti(q.id, key)}
+                onClick={() => toggleMulti(answerKey, key)}
               >
                 <span className="answer-key">{key}</span>
                 <span>{q[key]}</span>
@@ -341,8 +334,8 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
           <button
             key={key}
             type="button"
-            className={`answer-option ${answers[q.id] === key ? 'selected' : ''}`}
-            onClick={() => chooseSingle(q.id, key)}
+            className={`answer-option ${answers[answerKey] === key ? 'selected' : ''}`}
+            onClick={() => chooseSingle(answerKey, key)}
           >
             <span className="answer-key">{key}</span>
             <span>{q[key]}</span>
@@ -492,9 +485,9 @@ export default function ExamPage({ exam, studentInfo, onSubmit, onBack }) {
               </div>
 
               <div className="question-nav-grid">
-                {questions.map((q, idx) => {
-                  const value = answers[q.id]
-                  const answered = Array.isArray(value) ? value.length > 0 : Boolean(value)
+{questions.map((q, idx) => {
+  const value = answers[getAnswerKey(q)]
+  const answered = Array.isArray(value) ? value.length > 0 : Boolean(value)
 
                   return (
                     <button
