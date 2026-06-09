@@ -1,9 +1,6 @@
 // src/components/AdminPage.jsx
 import { useEffect, useState } from 'react'
-import {
-  collection,
-  getDocs,
-} from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import ExamUpload from './ExamUpload'
 import ResultsDashboard from './ResultsDashboard'
@@ -44,9 +41,11 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
 
         const max = scores.length ? Math.max(...scores) : 0
         const min = scores.length ? Math.min(...scores) : 0
+
         const passRate = scores.length
           ? (scores.filter(s => s >= 5).length / scores.length) * 100
           : 0
+
         const goodRate = scores.length
           ? (scores.filter(s => s >= 8).length / scores.length) * 100
           : 0
@@ -102,18 +101,21 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
             >
               Tổng quan
             </button>
+
             <button
               className={`tab-btn ${tab === 'upload' ? 'active' : ''}`}
               onClick={() => setTab('upload')}
             >
               Upload đề
             </button>
+
             <button
               className={`tab-btn ${tab === 'results' ? 'active' : ''}`}
               onClick={() => setTab('results')}
             >
               Kết quả
             </button>
+
             <button
               className={`tab-btn ${tab === 'settings' ? 'active' : ''}`}
               onClick={() => setTab('settings')}
@@ -134,26 +136,32 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
                 <div className="stat-value">{stats.exams}</div>
                 <div className="stat-label">Tổng số đề</div>
               </div>
+
               <div className="card card-sm stat-card">
                 <div className="stat-value">{stats.submissions}</div>
                 <div className="stat-label">Bài nộp</div>
               </div>
+
               <div className="card card-sm stat-card">
                 <div className="stat-value">{stats.avg.toFixed(1)}</div>
                 <div className="stat-label">Điểm trung bình</div>
               </div>
+
               <div className="card card-sm stat-card">
                 <div className="stat-value">{stats.max.toFixed(1)}</div>
                 <div className="stat-label">Điểm cao nhất</div>
               </div>
+
               <div className="card card-sm stat-card">
                 <div className="stat-value">{stats.min.toFixed(1)}</div>
                 <div className="stat-label">Điểm thấp nhất</div>
               </div>
+
               <div className="card card-sm stat-card">
                 <div className="stat-value">{stats.passRate.toFixed(0)}%</div>
                 <div className="stat-label">Tỷ lệ ≥ 5</div>
               </div>
+
               <div className="card card-sm stat-card">
                 <div className="stat-value">{stats.goodRate.toFixed(0)}%</div>
                 <div className="stat-label">Tỷ lệ ≥ 8</div>
@@ -188,6 +196,7 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
                 <thead>
                   <tr>
                     <th>question</th>
+                    <th>questionType</th>
                     <th>A</th>
                     <th>B</th>
                     <th>C</th>
@@ -197,23 +206,197 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
                     <th>topic</th>
                     <th>explanation</th>
                     <th>point</th>
+                    <th>partialMode</th>
+                    <th>partialScoreMap</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   <tr>
-                    <td>Nội dung câu hỏi</td>
-                    <td>Đáp án A</td>
-                    <td>Đáp án B</td>
-                    <td>Đáp án C</td>
-                    <td>Đáp án D</td>
-                    <td>A/B/C/D</td>
+                    <td>Nước có công thức gì?</td>
+                    <td>mcq</td>
+                    <td>H2O</td>
+                    <td>CO2</td>
+                    <td>O2</td>
+                    <td>NaCl</td>
+                    <td>A</td>
                     <td>Phần I</td>
-                    <td>Este</td>
-                    <td>Giải thích</td>
-                    <td>0.25</td>
+                    <td>Hóa cơ bản</td>
+                    <td>Nước là H2O</td>
+                    <td>1</td>
+                    <td>none</td>
+                    <td></td>
+                  </tr>
+
+                  <tr>
+                    <td>Chọn tất cả chất điện li mạnh</td>
+                    <td>multi</td>
+                    <td>NaCl</td>
+                    <td>HCl</td>
+                    <td>CH3COOH</td>
+                    <td>KOH</td>
+                    <td>A,B,D</td>
+                    <td>Phần II</td>
+                    <td>Điện li</td>
+                    <td>NaCl, HCl, KOH là điện li mạnh</td>
+                    <td>1</td>
+                    <td>custom</td>
+                    <td>0:0,1:0.1,2:0.25,3:0.5,4:1</td>
+                  </tr>
+
+                  <tr>
+                    <td>Chọn tất cả kim loại</td>
+                    <td>multi</td>
+                    <td>Fe</td>
+                    <td>Cu</td>
+                    <td>O2</td>
+                    <td>Al</td>
+                    <td>A,B,D</td>
+                    <td>Phần II</td>
+                    <td>Kim loại</td>
+                    <td>Fe, Cu, Al là kim loại</td>
+                    <td>1</td>
+                    <td>linear</td>
+                    <td></td>
+                  </tr>
+
+                  <tr>
+                    <td>Chọn tất cả oxit axit</td>
+                    <td>multi</td>
+                    <td>CO2</td>
+                    <td>SO2</td>
+                    <td>CaO</td>
+                    <td>P2O5</td>
+                    <td>A,B,D</td>
+                    <td>Phần II</td>
+                    <td>Oxit</td>
+                    <td>CO2, SO2, P2O5 là oxit axit</td>
+                    <td>1</td>
+                    <td>all-or-nothing</td>
+                    <td></td>
+                  </tr>
+
+                  <tr>
+                    <td>CO2 là oxit axit</td>
+                    <td>tf</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>true</td>
+                    <td>Phần III</td>
+                    <td>Oxit</td>
+                    <td>CO2 là oxit axit</td>
+                    <td>1</td>
+                    <td>none</td>
+                    <td></td>
+                  </tr>
+
+                  <tr>
+                    <td>2 + 2 = ?</td>
+                    <td>numeric</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td>4</td>
+                    <td>Phần IV</td>
+                    <td>Tính toán</td>
+                    <td>2 + 2 = 4</td>
+                    <td>1</td>
+                    <td>none</td>
+                    <td></td>
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div className="card card-sm card-flat mb-16">
+              <h3 className="mb-12" style={{ color: 'var(--green-dark)' }}>
+                Các loại câu hỏi
+              </h3>
+
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>questionType</th>
+                      <th>Ý nghĩa</th>
+                      <th>correct mẫu</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    <tr>
+                      <td>mcq</td>
+                      <td>Trắc nghiệm một đáp án</td>
+                      <td>A</td>
+                    </tr>
+
+                    <tr>
+                      <td>multi</td>
+                      <td>Chọn tất cả ý đúng</td>
+                      <td>A,C,D</td>
+                    </tr>
+
+                    <tr>
+                      <td>tf</td>
+                      <td>Đúng / Sai</td>
+                      <td>true hoặc false</td>
+                    </tr>
+
+                    <tr>
+                      <td>numeric</td>
+                      <td>Nhập đáp án số, tối đa 4 ký tự</td>
+                      <td>25 hoặc 3.14</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="card card-sm card-flat mb-16">
+              <h3 className="mb-12" style={{ color: 'var(--green-dark)' }}>
+                4 chế độ partial grading
+              </h3>
+
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>partialMode</th>
+                      <th>Ý nghĩa</th>
+                      <th>Ví dụ</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    <tr>
+                      <td>none</td>
+                      <td>Không chấm từng phần. Với multi, đúng đủ 4/4 ý mới có điểm.</td>
+                      <td></td>
+                    </tr>
+
+                    <tr>
+                      <td>all-or-nothing</td>
+                      <td>Đúng toàn bộ mới có điểm, sai 1 ý là 0 điểm.</td>
+                      <td></td>
+                    </tr>
+
+                    <tr>
+                      <td>linear</td>
+                      <td>Chia đều theo số ý đúng. Đúng 2/4 ý của câu 1 điểm thì được 0.5 điểm.</td>
+                      <td></td>
+                    </tr>
+
+                    <tr>
+                      <td>custom</td>
+                      <td>Giáo viên tự chia điểm theo số ý đúng.</td>
+                      <td>0:0,1:0.1,2:0.25,3:0.5,4:1</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             <div className="alert alert-warning">

@@ -31,6 +31,74 @@ export default function App() {
     return saved ? JSON.parse(saved) : null
   })
 
+  // Background infinite drift pattern
+useEffect(() => {
+  const MAX_SPEED = 10 // px mỗi frame, tăng lên nếu muốn chạy nhanh hơn
+
+  let velocityX = 0
+  let velocityY = 0
+  let currentX = 0
+  let currentY = 0
+  let smoothVX = 0
+  let smoothVY = 0
+  let animationFrameId = null
+
+  function handleMouseMove(e) {
+    const cx = window.innerWidth / 2
+    const cy = window.innerHeight / 2
+
+    // Chuột càng xa tâm thì vận tốc càng lớn
+    // Muốn đảo hướng thì thêm dấu - phía trước 2 dòng này
+    velocityX = -((e.clientX - cx) / cx) * MAX_SPEED
+    velocityY = -((e.clientY - cy) / cy) * MAX_SPEED
+  }
+
+  function handleMouseLeave() {
+    velocityX = 0
+    velocityY = 0
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t
+  }
+
+  function tick() {
+    // Làm mượt vận tốc, tránh giật
+    smoothVX = lerp(smoothVX, velocityX, 0.06)
+    smoothVY = lerp(smoothVY, velocityY, 0.06)
+
+    // Cộng dồn vị trí => không có điểm dừng
+    currentX += smoothVX
+    currentY += smoothVY
+
+    document.documentElement.style.setProperty(
+      '--bg-pattern-x',
+      `${currentX.toFixed(2)}px`
+    )
+
+    document.documentElement.style.setProperty(
+      '--bg-pattern-y',
+      `${currentY.toFixed(2)}px`
+    )
+
+    animationFrameId = requestAnimationFrame(tick)
+  }
+
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseleave', handleMouseLeave)
+  animationFrameId = requestAnimationFrame(tick)
+
+  return () => {
+    document.removeEventListener('mousemove', handleMouseMove)
+    document.removeEventListener('mouseleave', handleMouseLeave)
+
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId)
+    }
+  }
+}, [])
+
+  // Firebase auth listener
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user)

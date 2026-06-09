@@ -36,19 +36,22 @@
   --font-mono: 'Courier New', Courier, monospace;
   --chem-teal: #0d9488;
   --chem-dark: #134e4a;
+
+  /* ─── Parallax vars — driven by JS ─── */
+  --bg-pattern-x: 0px;
+  --bg-pattern-y: 0px;
 }
 
 /* ─── Reset ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; scroll-behavior: smooth; }
 
-/* ─── Chemistry Background ─── */
-/*
-  Background gồm 3 lớp chồng nhau:
-  1. Gradient màu xanh bên trên (opacity cao) — giữ nền sáng sạch
-  2. SVG pattern hoá học in chìm — phân tử, công thức, dụng cụ thí nghiệm
-  Tất cả được repeat tile 600x600px và fixed khi scroll.
-*/
+/* ─── Chemistry Background (Parallax infinite-space effect) ─────
+   background-position layer 2 (the SVG pattern) is controlled by
+   JS via --bg-pattern-x / --bg-pattern-y.  The gradient layer
+   stays fixed so it just tints the whole page evenly.
+   A lerp loop in the JS creates a "heavy / floating" feel.
+──────────────────────────────────────────────────────────────── */
 body {
   font-family: var(--font-main);
   background-color: #ecfdf5;
@@ -57,11 +60,14 @@ body {
     url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22600%22%20height%3D%22600%22%20viewBox%3D%220%200%20600%20600%22%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23065f46%22%20stroke-width%3D%221.5%22%20opacity%3D%220.55%22%3E%3Cg%20transform%3D%22translate%2860%2C60%29%22%3E%3Cpolygon%20points%3D%220%2C-28%2024%2C-14%2024%2C14%200%2C28%20-24%2C14%20-24%2C-14%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2213%22%20stroke-dasharray%3D%224%2C3%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28520%2C80%29%22%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2210%22%2F%3E%3Ccircle%20cx%3D%22-28%22%20cy%3D%2222%22%20r%3D%227%22%2F%3E%3Ccircle%20cx%3D%2228%22%20cy%3D%2222%22%20r%3D%227%22%2F%3E%3Cline%20x1%3D%22-7%22%20y1%3D%227%22%20x2%3D%22-21%22%20y2%3D%2217%22%2F%3E%3Cline%20x1%3D%227%22%20y1%3D%227%22%20x2%3D%2221%22%20y2%3D%2217%22%2F%3E%3Ctext%20x%3D%220%22%20y%3D%224%22%20text-anchor%3D%22middle%22%20font-size%3D%228%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EO%3C%2Ftext%3E%3Ctext%20x%3D%22-28%22%20y%3D%2226%22%20text-anchor%3D%22middle%22%20font-size%3D%227%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EH%3C%2Ftext%3E%3Ctext%20x%3D%2228%22%20y%3D%2226%22%20text-anchor%3D%22middle%22%20font-size%3D%227%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EH%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2880%2C280%29%22%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%226%22%2F%3E%3Cellipse%20cx%3D%220%22%20cy%3D%220%22%20rx%3D%2230%22%20ry%3D%2212%22%20transform%3D%22rotate%280%29%22%2F%3E%3Cellipse%20cx%3D%220%22%20cy%3D%220%22%20rx%3D%2230%22%20ry%3D%2212%22%20transform%3D%22rotate%2860%29%22%2F%3E%3Cellipse%20cx%3D%220%22%20cy%3D%220%22%20rx%3D%2230%22%20ry%3D%2212%22%20transform%3D%22rotate%28120%29%22%2F%3E%3Ccircle%20cx%3D%2230%22%20cy%3D%220%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%22-15%22%20cy%3D%2210%22%20r%3D%223%22%2F%3E%3Ccircle%20cx%3D%22-15%22%20cy%3D%22-10%22%20r%3D%223%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28480%2C260%29%22%3E%3Ccircle%20cx%3D%22-36%22%20cy%3D%220%22%20r%3D%229%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2211%22%2F%3E%3Ccircle%20cx%3D%2236%22%20cy%3D%220%22%20r%3D%229%22%2F%3E%3Cline%20x1%3D%22-27%22%20y1%3D%22-3%22%20x2%3D%22-11%22%20y2%3D%22-3%22%2F%3E%3Cline%20x1%3D%22-27%22%20y1%3D%223%22%20x2%3D%22-11%22%20y2%3D%223%22%2F%3E%3Cline%20x1%3D%2227%22%20y1%3D%22-3%22%20x2%3D%2211%22%20y2%3D%22-3%22%2F%3E%3Cline%20x1%3D%2227%22%20y1%3D%223%22%20x2%3D%2211%22%20y2%3D%223%22%2F%3E%3Ctext%20x%3D%22-36%22%20y%3D%224%22%20text-anchor%3D%22middle%22%20font-size%3D%227%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EO%3C%2Ftext%3E%3Ctext%20x%3D%220%22%20y%3D%224%22%20text-anchor%3D%22middle%22%20font-size%3D%227%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EC%3C%2Ftext%3E%3Ctext%20x%3D%2236%22%20y%3D%224%22%20text-anchor%3D%22middle%22%20font-size%3D%227%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EO%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2855%2C480%29%22%3E%3Cpath%20d%3D%22M%20-10%2C-30%20L%20-10%2C15%20Q%20-10%2C28%200%2C28%20Q%2010%2C28%2010%2C15%20L%2010%2C-30%20Z%22%2F%3E%3Cline%20x1%3D%22-14%22%20y1%3D%22-30%22%20x2%3D%2214%22%20y2%3D%22-30%22%2F%3E%3Cline%20x1%3D%22-10%22%20y1%3D%228%22%20x2%3D%2210%22%20y2%3D%228%22%20stroke-dasharray%3D%223%2C2%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28530%2C480%29%22%3E%3Cpolygon%20points%3D%220%2C-28%2024%2C-14%2024%2C14%200%2C28%20-24%2C14%20-24%2C-14%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%2213%22%20stroke-dasharray%3D%224%2C3%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28480%2C420%29%22%3E%3Cpath%20d%3D%22M%20-8%2C-35%20L%20-8%2C-5%20L%20-28%2C25%20Q%20-30%2C32%200%2C32%20Q%2030%2C32%2028%2C25%20L%208%2C-5%20L%208%2C-35%20Z%22%2F%3E%3Cline%20x1%3D%22-12%22%20y1%3D%22-35%22%20x2%3D%2212%22%20y2%3D%22-35%22%2F%3E%3Cline%20x1%3D%22-22%22%20y1%3D%2215%22%20x2%3D%2222%22%20y2%3D%2215%22%20stroke-dasharray%3D%223%2C2%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28260%2C150%29%22%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%226%22%2F%3E%3Ccircle%20cx%3D%2240%22%20cy%3D%220%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%2280%22%20cy%3D%220%22%20r%3D%226%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2240%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%2240%22%20cy%3D%2240%22%20r%3D%226%22%2F%3E%3Ccircle%20cx%3D%2280%22%20cy%3D%2240%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2280%22%20r%3D%226%22%2F%3E%3Ccircle%20cx%3D%2240%22%20cy%3D%2280%22%20r%3D%224%22%2F%3E%3Ccircle%20cx%3D%2280%22%20cy%3D%2280%22%20r%3D%226%22%2F%3E%3Cline%20x1%3D%226%22%20y1%3D%220%22%20x2%3D%2236%22%20y2%3D%220%22%2F%3E%3Cline%20x1%3D%2244%22%20y1%3D%220%22%20x2%3D%2274%22%20y2%3D%220%22%2F%3E%3Cline%20x1%3D%226%22%20y1%3D%2240%22%20x2%3D%2236%22%20y2%3D%2240%22%2F%3E%3Cline%20x1%3D%2244%22%20y1%3D%2240%22%20x2%3D%2274%22%20y2%3D%2240%22%2F%3E%3Cline%20x1%3D%226%22%20y1%3D%2280%22%20x2%3D%2236%22%20y2%3D%2280%22%2F%3E%3Cline%20x1%3D%2244%22%20y1%3D%2280%22%20x2%3D%2274%22%20y2%3D%2280%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%226%22%20x2%3D%220%22%20y2%3D%2236%22%2F%3E%3Cline%20x1%3D%220%22%20y1%3D%2244%22%20x2%3D%220%22%20y2%3D%2274%22%2F%3E%3Cline%20x1%3D%2240%22%20y1%3D%226%22%20x2%3D%2240%22%20y2%3D%2236%22%2F%3E%3Cline%20x1%3D%2240%22%20y1%3D%2244%22%20x2%3D%2240%22%20y2%3D%2274%22%2F%3E%3Cline%20x1%3D%2280%22%20y1%3D%226%22%20x2%3D%2280%22%20y2%3D%2236%22%2F%3E%3Cline%20x1%3D%2280%22%20y1%3D%2244%22%20x2%3D%2280%22%20y2%3D%2274%22%2F%3E%3Ctext%20x%3D%220%22%20y%3D%223%22%20text-anchor%3D%22middle%22%20font-size%3D%226%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3ENa%3C%2Ftext%3E%3Ctext%20x%3D%2240%22%20y%3D%2243%22%20text-anchor%3D%22middle%22%20font-size%3D%226%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3ECl%3C%2Ftext%3E%3C%2Fg%3E%3Ctext%20x%3D%22200%22%20y%3D%22490%22%20font-size%3D%2213%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3ECH4%3C%2Ftext%3E%3Ctext%20x%3D%22350%22%20y%3D%2255%22%20font-size%3D%2211%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3EC6H12O6%3C%2Ftext%3E%3Ctext%20x%3D%22140%22%20y%3D%22390%22%20font-size%3D%2211%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3EH2SO4%3C%2Ftext%3E%3Ctext%20x%3D%22400%22%20y%3D%22340%22%20font-size%3D%2211%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3ENH3%3C%2Ftext%3E%3Ctext%20x%3D%22280%22%20y%3D%22430%22%20font-size%3D%2210%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3EdG%3DdH-TdS%3C%2Ftext%3E%3Ctext%20x%3D%22100%22%20y%3D%22145%22%20font-size%3D%2210%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3EpH%3D-log%5BH%2B%5D%3C%2Ftext%3E%3Ctext%20x%3D%22400%22%20y%3D%22160%22%20font-size%3D%2210%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%20opacity%3D%220.7%22%3EPV%3DnRT%3C%2Ftext%3E%3Cg%20transform%3D%22translate%28200%2C320%29%22%3E%3Crect%20x%3D%220%22%20y%3D%220%22%20width%3D%2228%22%20height%3D%2228%22%20rx%3D%222%22%2F%3E%3Ctext%20x%3D%2214%22%20y%3D%2212%22%20text-anchor%3D%22middle%22%20font-size%3D%226%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3E6%3C%2Ftext%3E%3Ctext%20x%3D%2214%22%20y%3D%2222%22%20text-anchor%3D%22middle%22%20font-size%3D%229%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EC%3C%2Ftext%3E%3Crect%20x%3D%2230%22%20y%3D%220%22%20width%3D%2228%22%20height%3D%2228%22%20rx%3D%222%22%2F%3E%3Ctext%20x%3D%2244%22%20y%3D%2212%22%20text-anchor%3D%22middle%22%20font-size%3D%226%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3E7%3C%2Ftext%3E%3Ctext%20x%3D%2244%22%20y%3D%2222%22%20text-anchor%3D%22middle%22%20font-size%3D%229%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EN%3C%2Ftext%3E%3Crect%20x%3D%2260%22%20y%3D%220%22%20width%3D%2228%22%20height%3D%2228%22%20rx%3D%222%22%2F%3E%3Ctext%20x%3D%2274%22%20y%3D%2212%22%20text-anchor%3D%22middle%22%20font-size%3D%226%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3E8%3C%2Ftext%3E%3Ctext%20x%3D%2274%22%20y%3D%2222%22%20text-anchor%3D%22middle%22%20font-size%3D%229%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EO%3C%2Ftext%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28340%2C400%29%22%3E%3Cpath%20d%3D%22M%200%2C0%20Q%2015%2C-15%200%2C-30%20Q%20-15%2C-45%200%2C-60%20Q%2015%2C-75%200%2C-90%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%2F%3E%3Cpath%20d%3D%22M%2020%2C0%20Q%205%2C-15%2020%2C-30%20Q%2035%2C-45%2020%2C-60%20Q%205%2C-75%2020%2C-90%22%20stroke-width%3D%221.5%22%20fill%3D%22none%22%2F%3E%3Cline%20x1%3D%222%22%20y1%3D%22-10%22%20x2%3D%2218%22%20y2%3D%22-10%22%2F%3E%3Cline%20x1%3D%22-1%22%20y1%3D%22-30%22%20x2%3D%2219%22%20y2%3D%22-30%22%2F%3E%3Cline%20x1%3D%222%22%20y1%3D%22-50%22%20x2%3D%2218%22%20y2%3D%22-50%22%2F%3E%3Cline%20x1%3D%22-1%22%20y1%3D%22-70%22%20x2%3D%2219%22%20y2%3D%22-70%22%2F%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28140%2C210%29%22%3E%3Ctext%20x%3D%220%22%20y%3D%220%22%20font-size%3D%2210%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EA%20%2B%20B%3C%2Ftext%3E%3Cline%20x1%3D%2250%22%20y1%3D%22-4%22%20x2%3D%2280%22%20y2%3D%22-4%22%2F%3E%3Cpolygon%20points%3D%2280%2C-6%2088%2C-2%2080%2C2%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%2F%3E%3Ctext%20x%3D%2295%22%20y%3D%220%22%20font-size%3D%2210%22%20font-family%3D%22monospace%22%20fill%3D%22%23065f46%22%20stroke%3D%22none%22%3EAB%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E");
   background-size: auto, 600px 600px;
   background-repeat: no-repeat, repeat;
-  background-attachment: fixed, fixed;
+  /* gradient: fixed; pattern: scrolls with page but offset by JS parallax */
+  background-attachment: fixed, scroll;
+  background-position: center center, var(--bg-pattern-x) var(--bg-pattern-y);
   min-height: 100vh;
   color: var(--gray-800);
   line-height: 1.6;
 }
+
 a { color: inherit; text-decoration: none; }
 button { cursor: pointer; font-family: inherit; }
 input, select, textarea { font-family: inherit; }
@@ -92,7 +98,6 @@ img { max-width: 100%; display: block; }
 .card-flat { box-shadow: var(--shadow-sm); }
 .card-flat:hover { transform: none; }
 
-/* Chemistry label accent — dùng font mono cho số liệu/công thức bên trong card */
 .card .formula,
 .card .chem-label {
   font-family: var(--font-mono);
@@ -203,7 +208,6 @@ img { max-width: 100%; display: block; }
 .badge-yellow { background: #fef3c7; color: var(--yellow-text); }
 .badge-gray { background: var(--gray-100); color: var(--gray-600); }
 .badge-purple { background: #ede9fe; color: #6d28d9; }
-/* Badge hoá học - dùng cho nhãn nguyên tố / phân tử */
 .badge-chem {
   background: rgba(13,148,136,0.1);
   color: var(--chem-dark);
@@ -490,4 +494,9 @@ tr:hover td { background: var(--green-mint); }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .question-nav-grid { grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); }
   .nav-btn { width: 36px; height: 36px; font-size: 0.75rem; }
+}
+
+/* ─── Respect reduced-motion preference ─── */
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none !important; }
 }
