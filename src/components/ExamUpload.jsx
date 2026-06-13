@@ -8,21 +8,40 @@ import {
   updateDoc,
   writeBatch,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../firebase'
 import { parseExcelFile } from '../utils/excelParser'
 
 const COLUMNS = [
   { col: 'question', desc: 'Nội dung câu hỏi', req: true },
-  { col: 'A', desc: 'Đáp án A', req: true },
-  { col: 'B', desc: 'Đáp án B', req: true },
-  { col: 'C', desc: 'Đáp án C', req: true },
-  { col: 'D', desc: 'Đáp án D', req: true },
-  { col: 'correct', desc: 'A / B / C / D', req: true },
+  { col: 'questionType', desc: 'mcq / multi / tf / numeric', req: false },
+  { col: 'A', desc: 'Đáp án A', req: false },
+  { col: 'B', desc: 'Đáp án B', req: false },
+  { col: 'C', desc: 'Đáp án C', req: false },
+  { col: 'D', desc: 'Đáp án D', req: false },
+  { col: 'correct', desc: 'Đáp án đúng', req: true },
   { col: 'section', desc: 'Phần I, II...', req: false },
   { col: 'topic', desc: 'Este, Amin...', req: false },
   { col: 'explanation', desc: 'Giải thích đáp án', req: false },
-  { col: 'point', desc: '0.25', req: false },
+  { col: 'point', desc: '0.25 / 1 / 2...', req: false },
+  { col: 'partialMode', desc: 'none / custom / linear / all-or-nothing', req: false },
+  { col: 'partialScoreMap', desc: '0:0,1:0.1,2:0.25,3:0.5,4:1', req: false },
 ]
+
+function normalizeQuestionForAI(q) {
+  return {
+    question: q.question || '',
+    questionType: q.questionType || 'mcq',
+    A: q.A || '',
+    B: q.B || '',
+    C: q.C || '',
+    D: q.D || '',
+    correct: q.correct || '',
+    correctList: q.correctList || [],
+    topic: q.topic || '',
+    section: q.section || '',
+  }
+}
 
 export default function ExamUpload({ user, onUploaded }) {
   const [title, setTitle] = useState('')
@@ -30,17 +49,64 @@ export default function ExamUpload({ user, onUploaded }) {
   const [grade, setGrade] = useState('THPT')
   const [duration, setDuration] = useState(45)
   const [isActive, setIsActive] = useState(true)
+  const [allowReview, setAllowReview] = useState(true)
+  const [generateAiExplanations, setGenerateAiExplanations] = useState(false)
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [errors, setErrors] = useState([])
+  const [progress, setProgress] = useState('')
 
   const fileInputRef = useRef(null)
+
+  async function enrichQuestionsWithAI(questions) {
+    if (!generateAiExplanations) {
+      return questions
+    }
+
+    const generateExplanation = httpsCallable(functions, 'generateQuestionExplanation')
+    const result = []
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      const existingExplanation = String(q.explanation || '').trim()
+
+      if (existingExplanation) {
+        result.push(q)
+        continue
+      }
+
+      setProgress(`AI đang tạo giải thích câu ${i + 1}/${questions.length}...`)
+
+      try {
+        const res = await generateExplanation({
+          question: normalizeQuestionForAI(q),
+        })
+
+        const explanation = String(res.data?.explanation || '').trim()
+
+        result.push({
+          ...q,
+          explanation: explanation || 'Chưa có giải thích phù hợp cho câu này.',
+        })
+      } catch (err) {
+        console.error('AI explanation failed:', err)
+
+        result.push({
+          ...q,
+          explanation: 'Chưa có giải thích phù hợp cho câu này.',
+        })
+      }
+    }
+
+    return result
+  }
 
   async function handleUpload(e) {
     e.preventDefault()
     setMessage('')
     setErrors([])
+    setProgress('')
 
     if (!user?.uid) {
       setErrors(['Bạn cần đăng nhập giáo viên trước khi upload.'])
@@ -62,6 +128,8 @@ export default function ExamUpload({ user, onUploaded }) {
     setLoading(true)
 
     try {
+      setProgress('Đang đọc file Excel...')
+
       const { questions, errors: parseErrors } = await parseExcelFile(file)
 
       if (parseErrors.length > 0) {
@@ -83,61 +151,67 @@ export default function ExamUpload({ user, onUploaded }) {
 
       const cleanTitle = title.trim()
 
+      const finalQuestions = await enrichQuestionsWithAI(questions)
+
+      setProgress('Đang tạo đề thi trên Firestore...')
+
       const examRef = await addDoc(collection(db, 'exams'), {
         title: cleanTitle,
         subject: subject.trim() || 'Hóa học',
         grade: grade.trim() || 'THPT',
         duration: safeDuration,
         isActive,
+        allowReview,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
-        questionCount: questions.length,
+        questionCount: finalQuestions.length,
       })
 
-  const batch = writeBatch(db)
+      const batch = writeBatch(db)
 
-questions.forEach((q, index) => {
-  const privateRef = doc(collection(db, 'questionsPrivate'))
-  const publicRef = doc(collection(db, 'questionsPublic'))
+      finalQuestions.forEach((q, index) => {
+        const privateRef = doc(collection(db, 'questionsPrivate'))
+        const publicRef = doc(collection(db, 'questionsPublic'))
 
-  const baseData = {
-    examId: examRef.id,
-    order: index + 1,
-    question: q.question,
-    questionType: q.questionType,
-    A: q.A || '',
-    B: q.B || '',
-    C: q.C || '',
-    D: q.D || '',
-    section: q.section || 'Phần I',
-    topic: q.topic || 'Chưa phân loại',
-    point: q.point || 1,
-    createdAt: serverTimestamp(),
-  }
+        const baseData = {
+          examId: examRef.id,
+          order: index + 1,
+          question: q.question,
+          questionType: q.questionType || 'mcq',
+          A: q.A || '',
+          B: q.B || '',
+          C: q.C || '',
+          D: q.D || '',
+          section: q.section || 'Phần I',
+          topic: q.topic || 'Chưa phân loại',
+          point: q.point || 1,
+          createdAt: serverTimestamp(),
+        }
 
-  batch.set(privateRef, {
-    ...baseData,
-    correct: q.correct,
-    correctList: q.correctList || [],
-    explanation: q.explanation || '',
-    partialMode: q.partialMode || 'none',
-    partialScoreMap: q.partialScoreMap || {},
-  })
+        batch.set(privateRef, {
+          ...baseData,
+          correct: q.correct,
+          correctList: q.correctList || [],
+          explanation: q.explanation || '',
+          partialMode: q.partialMode || 'none',
+          partialScoreMap: q.partialScoreMap || {},
+        })
 
-  batch.set(publicRef, baseData)
-})
+        batch.set(publicRef, baseData)
+      })
 
-await batch.commit()
+      await batch.commit()
 
       await updateDoc(examRef, {
-        questionCount: questions.length,
+        questionCount: finalQuestions.length,
       })
 
-      setMessage(`Upload thành công ${questions.length} câu hỏi cho đề "${cleanTitle}".`)
+      setMessage(`Upload thành công ${finalQuestions.length} câu hỏi cho đề "${cleanTitle}".`)
       setTitle('')
       setDuration(45)
       setFile(null)
       setErrors([])
+      setProgress('')
 
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
@@ -149,6 +223,7 @@ await batch.commit()
       setErrors(['Upload thất bại: ' + err.message])
     } finally {
       setLoading(false)
+      setProgress('')
     }
   }
 
@@ -201,6 +276,12 @@ await batch.commit()
               ))}
             </ul>
           </div>
+        </div>
+      )}
+
+      {progress && (
+        <div className="alert alert-info mb-16">
+          {progress}
         </div>
       )}
 
@@ -260,6 +341,26 @@ await batch.commit()
             disabled={loading}
           />
           <span>Mở đề cho học sinh làm ngay</span>
+        </label>
+
+        <label className="form-checkbox mb-16">
+          <input
+            type="checkbox"
+            checked={allowReview}
+            onChange={(e) => setAllowReview(e.target.checked)}
+            disabled={loading}
+          />
+          <span>Cho học sinh xem lại bài sau khi nộp</span>
+        </label>
+
+        <label className="form-checkbox mb-16">
+          <input
+            type="checkbox"
+            checked={generateAiExplanations}
+            onChange={(e) => setGenerateAiExplanations(e.target.checked)}
+            disabled={loading}
+          />
+          <span>Tự tạo giải thích AI cho câu chưa có explanation</span>
         </label>
 
         <div className="form-group">
@@ -369,8 +470,7 @@ await batch.commit()
           fontSize: '0.82rem',
         }}
       >
-        Bản MVP đang chấm điểm ở frontend — đáp án đúng có thể xem qua DevTools.
-        Production nên chuyển phần chấm sang Firebase Cloud Functions.
+        Nếu cột explanation trống và bạn tick AI, hệ thống sẽ gọi Gemini qua Cloud Function rồi lưu explanation vào questionsPrivate.
       </div>
     </section>
   )

@@ -71,10 +71,10 @@ export default function ResultsDashboard({ refreshKey }) {
   }, [submissions, selectedExamId])
 
   function exportCsv() {
-    const headers = ['Thời gian','Họ tên','Lớp','SBD/Mã HS','Đề thi','Điểm /10','Xếp loại','Câu đúng','Câu sai','Bỏ trống','Vi phạm']
+    const headers = ['Thời gian','Email','Họ tên','Lớp','SBD/Mã HS','Đề thi','Điểm /10','Xếp loại','Câu đúng','Câu sai','Bỏ trống','Vi phạm']
     const rows = filtered.map(sub => {
       const score = getDisplayScore(sub)
-      return [toDateString(sub.submittedAt), sub.studentName, sub.className, sub.studentCode, sub.examTitle, score.toFixed(1), getGradeLabel(score), sub.correctCount, sub.wrongCount, sub.blankCount, sub.violations]
+      return [toDateString(sub.submittedAt), sub.studentEmail, sub.studentName, sub.className, sub.studentCode, sub.examTitle, score.toFixed(1), getGradeLabel(score), sub.correctCount, sub.wrongCount, sub.blankCount, sub.violations]
     })
     const csv = [headers, ...rows].map(row => row.map(escapeCsv).join(',')).join('\n')
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })

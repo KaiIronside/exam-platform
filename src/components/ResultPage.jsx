@@ -177,6 +177,7 @@ function getTypeLabel(type) {
 export default function ResultPage({ result, onBackHome }) {
   const grade = getGrade(result.displayScore)
   const topicGroups = classifyTopics(result.topicStats || {})
+  const allowReview = result.exam?.allowReview === true
 
   return (
     <div className="page">
@@ -262,56 +263,67 @@ export default function ResultPage({ result, onBackHome }) {
           />
         </section>
 
-        <section className="card">
-          <h2 className="mb-16" style={{ color: 'var(--green-dark)' }}>
-            Xem lại bài làm
-          </h2>
+        {allowReview ? (
+          <section className="card">
+            <h2 className="mb-16" style={{ color: 'var(--green-dark)' }}>
+              Xem lại bài làm
+            </h2>
 
-          <div className="flex flex-col gap-16">
-            {result.questionResults?.map((q, idx) => (
-              <div key={q.questionId} className="card card-sm card-flat">
-                <div className="flex justify-between gap-12 mb-12">
-                  <div>
-                    <div className="flex gap-8 mb-8" style={{ flexWrap: 'wrap' }}>
-                      <span className="badge badge-blue">
-                        {getTypeLabel(q.questionType)}
-                      </span>
-
-                      <span className="badge badge-gray">
-                        {q.earned}/{q.point} điểm
-                      </span>
-
-                      {q.questionType === 'multi' && (
-                        <span className="badge badge-purple">
-                          Đúng {q.detail?.correctOptionCount || 0}/4 ý
+            <div className="flex flex-col gap-16">
+              {result.questionResults?.map((q, idx) => (
+                <div key={q.questionId} className="card card-sm card-flat">
+                  <div className="flex justify-between gap-12 mb-12">
+                    <div>
+                      <div className="flex gap-8 mb-8" style={{ flexWrap: 'wrap' }}>
+                        <span className="badge badge-blue">
+                          {getTypeLabel(q.questionType)}
                         </span>
-                      )}
+
+                        <span className="badge badge-gray">
+                          {q.earned}/{q.point} điểm
+                        </span>
+
+                        {q.questionType === 'multi' && (
+                          <span className="badge badge-purple">
+                            Đúng {q.detail?.correctOptionCount || 0}/4 ý
+                          </span>
+                        )}
+                      </div>
+
+                      <strong>Câu {idx + 1}: {q.question}</strong>
                     </div>
 
-                    <strong>Câu {idx + 1}: {q.question}</strong>
+                    <span className={`badge ${q.isCorrect ? 'badge-green' : q.isBlank ? 'badge-yellow' : 'badge-red'}`}>
+                      {q.isCorrect ? 'Đúng hoàn toàn' : q.isBlank ? 'Bỏ trống' : 'Chưa đúng'}
+                    </span>
                   </div>
 
-                  <span className={`badge ${q.isCorrect ? 'badge-green' : q.isBlank ? 'badge-yellow' : 'badge-red'}`}>
-                    {q.isCorrect ? 'Đúng hoàn toàn' : q.isBlank ? 'Bỏ trống' : 'Chưa đúng'}
-                  </span>
+                  {renderReviewOptions(q)}
+
+                  <p className="text-sm text-gray mt-12">
+                    Đáp án của bạn: <strong>{formatStudentAnswer(q)}</strong> ·
+                    Đáp án đúng: <strong>{formatCorrectAnswer(q)}</strong>
+                  </p>
+
+                  {q.explanation && (
+                    <div className="alert alert-info mt-16">
+                      {q.explanation}
+                    </div>
+                  )}
                 </div>
-
-                {renderReviewOptions(q)}
-
-                <p className="text-sm text-gray mt-12">
-                  Đáp án của bạn: <strong>{formatStudentAnswer(q)}</strong> ·
-                  Đáp án đúng: <strong>{formatCorrectAnswer(q)}</strong>
-                </p>
-
-                {q.explanation && (
-                  <div className="alert alert-info mt-16">
-                    {q.explanation}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <section className="card">
+            <h2 className="mb-12" style={{ color: 'var(--green-dark)' }}>
+              Giáo viên chưa mở xem lại bài
+            </h2>
+            <p className="text-gray">
+              Bạn chỉ xem được điểm tổng. Chi tiết đáp án và giải thích sẽ được hiển thị nếu giáo viên bật quyền xem lại.
+            </p>
+          </section>
+        )}
       </div>
     </div>
   )

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import {
   collection, getDocs, orderBy, query, where,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import { auth, db, googleProvider } from '../firebase'
 
 function ImageWithFallback({ src, alt, className, fallbackText }) {
   const [errored, setErrored] = useState(false)
@@ -254,11 +255,48 @@ function BalanceGame() {
 export default function StudentHome({ onStartExam, onAdminClick }) {
   const [exams, setExams] = useState([])
   const [selectedExamId, setSelectedExamId] = useState('')
+  const [studentUser, setStudentUser] = useState(null)
   const [studentName, setStudentName] = useState('')
   const [className, setClassName] = useState('')
   const [studentCode, setStudentCode] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, user => {
+      setStudentUser(user)
+
+      if (user?.displayName) {
+        setStudentName(user.displayName)
+      }
+    })
+
+    return () => unsub()
+  }, [])
+
+  async function handleGoogleLogin() {
+    setError('')
+
+    try {
+      await signInWithPopup(auth, googleProvider)
+    } catch (err) {
+      console.error(err)
+      setError('Đăng nhập Google thất bại: ' + err.message)
+    }
+  }
+
+  async function handleStudentLogout() {
+    setError('')
+
+    try {
+      await signOut(auth)
+      setStudentUser(null)
+      setStudentName('')
+    } catch (err) {
+      console.error(err)
+      setError('Đăng xuất thất bại: ' + err.message)
+    }
+  }
 
   useEffect(() => {
     async function loadExams() {
@@ -285,10 +323,32 @@ export default function StudentHome({ onStartExam, onAdminClick }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!studentName.trim()) { setError('Vui lòng nhập họ tên.'); return }
-    if (!className.trim()) { setError('Vui lòng nhập lớp.'); return }
-    if (!selectedExamId) { setError('Vui lòng chọn đề thi.'); return }
+    setError('')
+
+    if (!studentUser?.uid) {
+      setError('Bạn cần đăng nhập Google trước khi làm bài.')
+      return
+    }
+
+    if (!studentName.trim()) {
+      setError('Không lấy được họ tên từ tài khoản Google. Vui lòng nhập lại họ tên.')
+      return
+    }
+
+    if (!className.trim()) {
+      setError('Vui lòng nhập lớp.')
+      return
+    }
+
+    if (!selectedExamId) {
+      setError('Vui lòng chọn đề thi.')
+      return
+    }
+
     onStartExam(exams.find(ex => ex.id === selectedExamId), {
+      uid: studentUser.uid,
+      email: studentUser.email || '',
+      photoURL: studentUser.photoURL || '',
       studentName: studentName.trim(),
       className: className.trim(),
       studentCode: studentCode.trim(),
@@ -398,11 +458,39 @@ export default function StudentHome({ onStartExam, onAdminClick }) {
               </div>
             )}
 
+            {!studentUser ? (
+              <div className="alert alert-info mb-16" style={{ display: 'block' }}>
+                <p className="mb-12">
+                  Học sinh cần đăng nhập bằng Google để tránh nhập tên giả hoặc nộp hộ bạn khác.
+                </p>
+                <button type="button" className="btn btn-primary btn-full" onClick={handleGoogleLogin}>
+                  Đăng nhập bằng Google để làm bài
+                </button>
+              </div>
+            ) : (
+              <div className="alert alert-info mb-16" style={{ display: 'block' }}>
+                <div className="flex justify-between items-center gap-12" style={{ flexWrap: 'wrap' }}>
+                  <div>
+                    <strong>{studentUser.displayName || studentUser.email}</strong>
+                    <p className="text-sm text-gray">{studentUser.email}</p>
+                  </div>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={handleStudentLogout}>
+                    Đăng xuất
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label className="form-label">Họ và tên</label>
-                <input className="form-input" value={studentName}
-                  onChange={e => setStudentName(e.target.value)} placeholder="Nguyễn Văn A" />
+                <label className="form-label">Họ và tên từ Google</label>
+                <input
+                  className="form-input"
+                  value={studentName}
+                  onChange={e => setStudentName(e.target.value)}
+                  placeholder="Đăng nhập Google để tự điền tên"
+                  disabled={!studentUser}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Lớp</label>
@@ -430,7 +518,7 @@ export default function StudentHome({ onStartExam, onAdminClick }) {
                 </select>
               </div>
               <button type="submit" className="btn btn-primary btn-full btn-lg"
-                disabled={loading || exams.length === 0}>
+                disabled={loading || exams.length === 0 || !studentUser}>
                 🚀 Bắt đầu làm bài
               </button>
             </form>

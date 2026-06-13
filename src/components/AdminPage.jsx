@@ -4,6 +4,7 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import ExamUpload from './ExamUpload'
 import ResultsDashboard from './ResultsDashboard'
+import ExamManager from './ExamManager'
 
 function getDisplayScore(sub) {
   if (typeof sub.displayScore === 'number') return sub.displayScore
@@ -117,6 +118,13 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
             </button>
 
             <button
+              className={`tab-btn ${tab === 'exams' ? 'active' : ''}`}
+              onClick={() => setTab('exams')}
+            >
+              Quản lý đề
+            </button>
+
+            <button
               className={`tab-btn ${tab === 'settings' ? 'active' : ''}`}
               onClick={() => setTab('settings')}
             >
@@ -179,6 +187,10 @@ export default function AdminPage({ user, profile, onLogout, onBack }) {
 
         {tab === 'results' && (
           <ResultsDashboard refreshKey={refreshKey} />
+        )}
+
+        {tab === 'exams' && (
+          <ExamManager onChanged={() => setRefreshKey(k => k + 1)} />
         )}
 
         {tab === 'settings' && (

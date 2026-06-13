@@ -500,3 +500,23 @@ tr:hover td { background: var(--green-mint); }
 @media (prefers-reduced-motion: reduce) {
   body { transition: none !important; }
 }
+/* ─── Exam review panel ─── */
+#exam-review-panel {
+  scroll-margin-top: 90px;
+}
+
+.card-flat {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+  border: 1px solid var(--green-border);
+}
+
+.answer-option .badge {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  #exam-review-panel .answer-option {
+    align-items: flex-start;
+  }
+}
