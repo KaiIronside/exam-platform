@@ -28,3 +28,4 @@ dist-ssr
 functions/.env
 functions/.env.*
 !functions/.env.example
+src\firebase.js
